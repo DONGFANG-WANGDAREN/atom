@@ -1,60 +1,69 @@
-'use babel'
+const { Emitter, CompositeDisposable } = require('event-kit');
 
-import {Emitter, CompositeDisposable} from 'event-kit'
+module.exports = class AutoUpdateManager {
+  constructor({ applicationDelegate }) {
+    this.applicationDelegate = applicationDelegate;
+    this.subscriptions = new CompositeDisposable();
+    this.emitter = new Emitter();
+  }
 
-export default class AutoUpdateManager {
-  constructor ({applicationDelegate}) {
-    this.applicationDelegate = applicationDelegate
-    this.subscriptions = new CompositeDisposable()
-    this.emitter = new Emitter()
-
+  initialize() {
     this.subscriptions.add(
-      applicationDelegate.onDidBeginCheckingForUpdate(() => {
-        this.emitter.emit('did-begin-checking-for-update')
+      this.applicationDelegate.onDidBeginCheckingForUpdate(() => {
+        this.emitter.emit('did-begin-checking-for-update');
       }),
-      applicationDelegate.onDidBeginDownloadingUpdate(() => {
-        this.emitter.emit('did-begin-downloading-update')
+      this.applicationDelegate.onDidBeginDownloadingUpdate(() => {
+        this.emitter.emit('did-begin-downloading-update');
       }),
-      applicationDelegate.onDidCompleteDownloadingUpdate((details) => {
-        this.emitter.emit('did-complete-downloading-update', details)
+      this.applicationDelegate.onDidCompleteDownloadingUpdate(details => {
+        this.emitter.emit('did-complete-downloading-update', details);
       }),
-      applicationDelegate.onUpdateNotAvailable(() => {
-        this.emitter.emit('update-not-available')
+      this.applicationDelegate.onUpdateNotAvailable(() => {
+        this.emitter.emit('update-not-available');
+      }),
+      this.applicationDelegate.onUpdateError(() => {
+        this.emitter.emit('update-error');
       })
-    )
+    );
   }
 
-  destroy () {
-    this.subscriptions.dispose()
-    this.emitter.dispose()
+  destroy() {
+    this.subscriptions.dispose();
+    this.emitter.dispose();
   }
 
-  checkForUpdate () {
-    this.applicationDelegate.checkForUpdate()
+  checkForUpdate() {
+    this.applicationDelegate.checkForUpdate();
   }
 
-  restartAndInstallUpdate () {
-    this.applicationDelegate.restartAndInstallUpdate()
+  restartAndInstallUpdate() {
+    this.applicationDelegate.restartAndInstallUpdate();
   }
 
-  getState () {
-    return this.applicationDelegate.getAutoUpdateManagerState()
+  getState() {
+    return this.applicationDelegate.getAutoUpdateManagerState();
   }
 
-  platformSupportsUpdates () {
-    return atom.getReleaseChannel() !== 'dev' && this.getState() !== 'unsupported'
+  getErrorMessage() {
+    return this.applicationDelegate.getAutoUpdateManagerErrorMessage();
   }
 
-  onDidBeginCheckingForUpdate (callback) {
-    return this.emitter.on('did-begin-checking-for-update', callback)
+  platformSupportsUpdates() {
+    return (
+      atom.getReleaseChannel() !== 'dev' && this.getState() !== 'unsupported'
+    );
   }
 
-  onDidBeginDownloadingUpdate (callback) {
-    return this.emitter.on('did-begin-downloading-update', callback)
+  onDidBeginCheckingForUpdate(callback) {
+    return this.emitter.on('did-begin-checking-for-update', callback);
   }
 
-  onDidCompleteDownloadingUpdate (callback) {
-    return this.emitter.on('did-complete-downloading-update', callback)
+  onDidBeginDownloadingUpdate(callback) {
+    return this.emitter.on('did-begin-downloading-update', callback);
+  }
+
+  onDidCompleteDownloadingUpdate(callback) {
+    return this.emitter.on('did-complete-downloading-update', callback);
   }
 
   // TODO: When https://github.com/atom/electron/issues/4587 is closed, we can
@@ -63,11 +72,15 @@ export default class AutoUpdateManager {
   //   return this.emitter.on('update-available', callback)
   // }
 
-  onUpdateNotAvailable (callback) {
-    return this.emitter.on('update-not-available', callback)
+  onUpdateNotAvailable(callback) {
+    return this.emitter.on('update-not-available', callback);
   }
 
-  getPlatform () {
-    return process.platform
+  onUpdateError(callback) {
+    return this.emitter.on('update-error', callback);
   }
-}
+
+  getPlatform() {
+    return process.platform;
+  }
+};
